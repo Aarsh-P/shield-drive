@@ -1,36 +1,99 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# ShieldDrive — Auto Insurance Quote Engine
 
-## Getting Started
+A Next.js app for comparing and quoting auto insurance rates. Collects lead data, validates against known vehicle combinations, and stores submissions for downstream processing.
 
-First, run the development server:
+## Setup
+
+### Prerequisites
+
+- Node.js 20+
+- PostgreSQL 15+ (or [Supabase](https://supabase.com) free tier)
+- npm
+
+### Environment Variables
+
+Copy `.env.example` to `.env` and fill in your credentials:
+
+```bash
+cp .env.example .env
+```
+
+| Variable | Description |
+|---|---|
+| `DATABASE_URL` | PostgreSQL connection string (transaction pooler, port 6543 with `?pgbouncer=true`) |
+| `DIRECT_URL` | PostgreSQL direct connection (session mode, port 5432 — used by Prisma migrations) |
+
+> **Supabase users:** Use the **Pooler** connection string (port 6543) for `DATABASE_URL` and the **Session pooler** / direct connection (port 5432) for `DIRECT_URL`.
+
+### Install Dependencies
+
+```bash
+npm install
+```
+
+### Database Migrations
+
+Run the Prisma migration to create the schema:
+
+```bash
+npx prisma migrate dev --name init
+```
+
+### Seed Vehicle Data
+
+Seed the database with ~3600 vehicle combinations (15 years x 19 makes x ~8 models):
+
+```bash
+npx prisma db seed
+```
+
+This runs `prisma/seed.ts`, which reads `prisma/seed-data.json` and inserts rows into the `vehicles` table using `createMany` with `skipDuplicates: true`.
+
+### Run Locally
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+---
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Vehicle Seed Data — How It Was Generated
 
-## Learn More
+The make/model list was produced by prompting a LLM with:
 
-To learn more about Next.js, take a look at the following resources:
+> *"List 15 of the most popular auto manufacturers in the United States, and for each manufacturer list 5–8 of their most common passenger-vehicle models. Return the data as a JSON object."*
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+The response was copied into `scripts/generate-vehicles-data.ts`, which iterates over years 2012–2026 and expands the make×model matrix into 3600+ `{ year, make, model }` records, writing them to `prisma/seed-data.json`.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+To regenerate:
 
-## Deploy on Vercel
+```bash
+npx tsx scripts/generate-vehicles-data.ts
+```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+The seed script (`prisma/seed.ts`) reads this JSON file and inserts it into the database.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+---
+
+## Lighthouse / Web Vitals
+
+<!-- UPDATE THESE WITH YOUR ACTUAL SCORES -->
+
+| Metric | Score |
+|---|---|
+| Performance | ⏳ _pending_ |
+| Accessibility | ⏳ _pending_ |
+| Best Practices | ⏳ _pending_ |
+| SEO | ⏳ _pending_ |
+
+---
+
+## Trade-offs & Decisions
+
+Given the time constraints, several pragmatic choices were made. The UI uses `@base-ui/react` primitives (Select, Input, Button) via shadcn — this gave a polished look with minimal custom CSS but meant the Select component lacks built-in search/filter, which would be nice for the vehicle dropdowns. 
+
+The lead schema is duplicated between the client (Zod + react-hook-form, where `carYear` is a string from the `<Select>`) and the server (where it arrives as a number from `JSON.parse`); unifying with `z.coerce.number()` caused type friction with `zodResolver`, so the conversion is handled explicitly in the submit handler. Prisma's `createMany` with `skipDuplicates: true` makes seeding idempotent without upsert overhead. 
+
+Error messages are surfaced via `sonner` toasts rather than inline form errors — this is simpler but less accessible. With more time, I'd add a searchable combobox for vehicle fields, inline field-level server errors, form persistence across page reloads, and a proper rate-limiter on the leads endpoint. I chose not to add authentication since the spec only called for a public-facing lead form.

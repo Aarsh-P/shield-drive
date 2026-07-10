@@ -1,5 +1,11 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { apiSuccess, apiError } from '@/lib/api-response';
+
+const CACHE_HEADERS = { 'Cache-Control': 'public, max-age=86400, s-maxage=86400, stale-while-revalidate=3600' } as const;
+
+// Simple in-memory cache map keyed by year
+const cachedMakes = new Map<number, string[]>();
 
 export async function GET(request: NextRequest) {
   try {
@@ -7,36 +13,32 @@ export async function GET(request: NextRequest) {
     const yearStr = searchParams.get('year');
 
     if (!yearStr) {
-      return NextResponse.json({ error: 'Missing year parameter' }, { status: 400 });
+      return apiError('Missing year parameter', 400);
     }
 
     const year = parseInt(yearStr, 10);
     if (isNaN(year)) {
-      return NextResponse.json({ error: 'Invalid year parameter' }, { status: 400 });
+      return apiError('Invalid year parameter', 400);
+    }
+
+    const cached = cachedMakes.get(year);
+    if (cached) {
+      return apiSuccess(cached, 200, CACHE_HEADERS);
     }
 
     const result = await prisma.vehicle.findMany({
-      where: {
-        year: year,
-      },
-      select: {
-        make: true,
-      },
+      where: { year },
+      select: { make: true },
       distinct: ['make'],
-      orderBy: {
-        make: 'asc',
-      },
+      orderBy: { make: 'asc' },
     });
 
     const makes = result.map((item) => item.make);
+    cachedMakes.set(year, makes);
 
-    return NextResponse.json(makes, {
-      headers: {
-        'Cache-Control': 'public, s-maxage=3600, stale-while-revalidate=59',
-      },
-    });
+    return apiSuccess(makes, 200, CACHE_HEADERS);
   } catch (error) {
     console.error('Error fetching makes:', error);
-    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+    return apiError('Internal Server Error', 500);
   }
 }
