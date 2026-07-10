@@ -79,14 +79,21 @@ The seed script (`prisma/seed.ts`) reads this JSON file and inserts it into the 
 
 ## Lighthouse / Web Vitals
 
-<!-- UPDATE THESE WITH YOUR ACTUAL SCORES -->
+> The mentioned score are the best of the scores I got with multiple attempts on the deployed Vercel app.
 
-| Metric | Score |
-|---|---|
-| Performance | ⏳ _pending_ |
-| Accessibility | ⏳ _pending_ |
-| Best Practices | ⏳ _pending_ |
-| SEO | ⏳ _pending_ |
+| Metric | Mobile Score | Desktop Score |
+|---|---|---|
+| Performance | 91 | 100 |
+| Accessibility | 100 | 96 |
+| Best Practices | 100 | 100 |
+| SEO | 100 | 100 |
+
+Screenshots for the reference:
+
+**Mobile Performance**
+![Mobile Lighthouse Score](<Screenshot 2026-07-11 025949.png>)
+**Desktop Performance**
+![Desktop Lighthouse Score](<Screenshot 2026-07-11 025521.png>)
 
 ---
 

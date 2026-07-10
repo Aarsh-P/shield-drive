@@ -10,7 +10,7 @@ const nunito = Nunito({
 export const metadata: Metadata = {
   title: "ShieldDrive | Compare Auto Insurance Rates & Save",
   description: "Stop overpaying for auto insurance. Compare personalized rates from top-rated carriers in minutes. Drivers save an average of $536/year.",
-  metadataBase: new URL("https://shield-drive-n84l99hwn-tiramissuu.vercel.app/"),
+  metadataBase: new URL("https://shield-drive-sable.vercel.app/"),
   robots: {
     index: true,
     follow: true,
@@ -21,7 +21,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: "ShieldDrive | Compare Auto Insurance Rates & Save",
     description: "Stop overpaying for auto insurance. Compare personalized rates from top-rated carriers in minutes. Drivers save an average of $536/year.",
-    url: "https://shield-drive-n84l99hwn-tiramissuu.vercel.app/",
+    url: "https://shield-drive-sable.vercel.app/",
     siteName: "ShieldDrive",
     locale: "en_US",
     type: "website",

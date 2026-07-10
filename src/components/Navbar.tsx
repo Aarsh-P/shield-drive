@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { ShieldCheck, Star, Phone } from "lucide-react";
 
 export default function Navbar() {
@@ -5,14 +6,14 @@ export default function Navbar() {
     <header className="bg-white/95 backdrop-blur-sm border-b sticky top-0 z-50 shadow-sm">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
         {/* Logo */}
-        <div className="flex items-center gap-2">
+        <Link href="/" className="flex items-center gap-2">
           <div className="flex items-center justify-center h-9 w-9 rounded-lg bg-blue-600">
             <ShieldCheck className="h-5 w-5 text-white" />
           </div>
           <span className="text-xl font-bold text-slate-900 tracking-tight">
             Shield<span className="text-blue-600">Drive</span>
           </span>
-        </div>
+        </Link>
 
         {/* Center: Trust badges */}
         <div className="hidden md:flex items-center gap-6 text-sm font-medium text-slate-600">
