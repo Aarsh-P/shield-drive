@@ -3,7 +3,6 @@
 import { useState, useEffect } from "react";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import * as z from "zod";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
@@ -11,22 +10,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
 import { Loader2, Calendar, Car, Settings } from "lucide-react";
-
-const USPhoneRegex = /^\+?1?\s*\(?[0-9]{3}\)?[-. ]?[0-9]{3}[-. ]?[0-9]{4}$/;
-const ZIPRegex = /^[0-9]{5}$/;
-
-const leadSchema = z.object({
-  firstName: z.string().trim().min(1, 'First name is required').max(100),
-  lastName: z.string().trim().min(1, 'Last name is required').max(100),
-  email: z.string().trim().toLowerCase().email('Invalid email address').max(255),
-  phone: z.string().trim().regex(USPhoneRegex, 'Invalid US phone number format'),
-  zipCode: z.string().trim().regex(ZIPRegex, 'ZIP code must be exactly 5 digits'),
-  carYear: z.string({ message: 'Car year is required' }).min(1, 'Car year is required'),
-  carMake: z.string({ message: 'Car make is required' }).min(1, 'Car make is required').max(50),
-  carModel: z.string({ message: 'Car model is required' }).min(1, 'Car model is required').max(50),
-});
-
-type LeadFormValues = z.infer<typeof leadSchema>;
+import { fetchApi } from "@/lib/api-response";
+import { leadSchema, type LeadFormValues } from "@/lib/lead-schema";
 
 export default function LeadForm() {
   const [years, setYears] = useState<number[]>([]);
@@ -55,7 +40,7 @@ export default function LeadForm() {
       email: "",
       phone: "",
       zipCode: "",
-      carYear: "",
+      carYear: undefined,
       carMake: "",
       carModel: "",
     },
@@ -67,17 +52,13 @@ export default function LeadForm() {
   // Fetch Years
   useEffect(() => {
     const fetchYears = async () => {
-      try {
-        const res = await fetch("/api/vehicles/years");
-        if (res.ok) {
-          const data = await res.json();
-          setYears(data);
-        }
-      } catch (error) {
-        console.error("Failed to fetch years", error);
-      } finally {
-        setLoadingYears(false);
+      const res = await fetchApi<number[]>("/api/vehicles/years");
+      if (res.success) {
+        setYears(res.data);
+      } else {
+        console.error("Failed to fetch years", res.error);
       }
+      setLoadingYears(false);
     };
     fetchYears();
   }, []);
@@ -90,17 +71,13 @@ export default function LeadForm() {
     }
     const fetchMakes = async () => {
       setLoadingMakes(true);
-      try {
-        const res = await fetch(`/api/vehicles/makes?year=${selectedYear}`);
-        if (res.ok) {
-          const data = await res.json();
-          setMakes(data);
-        }
-      } catch (error) {
-        console.error("Failed to fetch makes", error);
-      } finally {
-        setLoadingMakes(false);
+      const res = await fetchApi<string[]>(`/api/vehicles/makes?year=${selectedYear}`);
+      if (res.success) {
+        setMakes(res.data);
+      } else {
+        console.error("Failed to fetch makes", res.error);
       }
+      setLoadingMakes(false);
     };
     fetchMakes();
   }, [selectedYear]);
@@ -113,53 +90,35 @@ export default function LeadForm() {
     }
     const fetchModels = async () => {
       setLoadingModels(true);
-      try {
-        const res = await fetch(`/api/vehicles/models?year=${selectedYear}&make=${encodeURIComponent(selectedMake)}`);
-        if (res.ok) {
-          const data = await res.json();
-          setModels(data);
-        }
-      } catch (error) {
-        console.error("Failed to fetch models", error);
-      } finally {
-        setLoadingModels(false);
+      const res = await fetchApi<string[]>(
+        `/api/vehicles/models?year=${selectedYear}&make=${encodeURIComponent(selectedMake)}`
+      );
+      if (res.success) {
+        setModels(res.data);
+      } else {
+        console.error("Failed to fetch models", res.error);
       }
+      setLoadingModels(false);
     };
     fetchModels();
   }, [selectedYear, selectedMake]);
 
   const onSubmit = async (data: LeadFormValues) => {
     setIsSubmitting(true);
-    try {
-      const payload = {
-        ...data,
-        carYear: parseInt(data.carYear, 10),
-      };
+    const res = await fetchApi<{ leadId: string }>("/api/leads", {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
 
-      const res = await fetch("/api/leads", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(payload),
-      });
-
-      const responseData = await res.json();
-
-      if (!res.ok) {
-        throw new Error(responseData.error || "Failed to submit lead");
-      }
-
+    if (res.success) {
       toast.success("Quote request submitted successfully!");
       reset();
-      setModels([])
-      setMakes([])
-    } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : "An error occurred. Please try again.";
-      toast.error(message);
-    } finally {
-      setIsSubmitting(false);
+      setModels([]);
+      setMakes([]);
+    } else {
+      toast.error(res.error);
     }
+    setIsSubmitting(false);
   };
 
   return (
@@ -174,27 +133,27 @@ export default function LeadForm() {
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <Input id="firstName" placeholder="First Name" className="h-10 md:h-12" {...register("firstName")} />
+              <Input id="firstName" placeholder="First Name *" className="h-10 md:h-12" aria-invalid={!!errors.firstName} {...register("firstName")} />
               <div className="error-spacer min-h-[1.5rem]">{errors.firstName && <p className="text-sm text-red-500">{errors.firstName.message}</p>}</div>
             </div>
             <div>
-              <Input id="lastName" placeholder="Last Name" className="h-10 md:h-12" {...register("lastName")} />
+              <Input id="lastName" placeholder="Last Name *" className="h-10 md:h-12" aria-invalid={!!errors.lastName} {...register("lastName")} />
               <div className="error-spacer min-h-[1.5rem]">{errors.lastName && <p className="text-sm text-red-500">{errors.lastName.message}</p>}</div>
             </div>
           </div>
 
           <div>
-            <Input id="email" type="email" placeholder="Email Address" className="h-10 md:h-12" {...register("email")} />
+            <Input id="email" type="email" placeholder="Email Address *" className="h-10 md:h-12" aria-invalid={!!errors.email} {...register("email")} />
             <div className="error-spacer min-h-[1.5rem]">{errors.email && <p className="text-sm text-red-500">{errors.email.message}</p>}</div>
           </div>
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <Input id="phone" type="tel" placeholder="Phone Number" className="h-10 md:h-12" {...register("phone")} />
+              <Input id="phone" type="tel" placeholder="Phone Number *" className="h-10 md:h-12" aria-invalid={!!errors.phone} {...register("phone")} />
               <div className="error-spacer min-h-[1.5rem]">{errors.phone && <p className="text-sm text-red-500">{errors.phone.message}</p>}</div>
             </div>
             <div>
-              <Input id="zipCode" placeholder="ZIP Code" className="h-10 md:h-12" {...register("zipCode")} />
+              <Input id="zipCode" placeholder="ZIP Code *" className="h-10 md:h-12" aria-invalid={!!errors.zipCode} {...register("zipCode")} />
               <div className="error-spacer min-h-[1.5rem]">{errors.zipCode && <p className="text-sm text-red-500">{errors.zipCode.message}</p>}</div>
             </div>
           </div>
@@ -204,7 +163,7 @@ export default function LeadForm() {
 
             <div className="flex flex-col space-y-4">
               <div className="space-y-1">
-                <Label htmlFor="carYear"><Calendar className="inline-block mr-1 h-4 w-4" /> Year</Label>
+                <Label htmlFor="carYear"><Calendar className="inline-block mr-1 h-4 w-4" /> Year <span className="text-red-500">*</span></Label>
                 <Controller
                   name="carYear"
                   control={control}
@@ -212,14 +171,14 @@ export default function LeadForm() {
                     <Select
                       disabled={loadingYears}
                       onValueChange={(val) => {
-                        field.onChange(val);
+                        field.onChange(Number(val));
                         resetField("carMake");
                         resetField("carModel");
                       }}
-                      value={field.value}
+                      value={field.value ? String(field.value) : ""}
                     >
-                      <SelectTrigger id="carYear" className="w-full">
-                        <SelectValue placeholder={loadingYears ? "Loading..." : "Select Year"} />
+                      <SelectTrigger id="carYear" className="w-full h-10 md:h-12 flex items-center justify-between" aria-invalid={!!errors.carYear}>
+                        <SelectValue placeholder={loadingYears ? <Loader2 className="h-4 w-4 animate-spin text-blue-500 flex-shrink-0" /> : "Select Year"} />
                       </SelectTrigger>
                       <SelectContent>
                         {years.map((year) => (
@@ -235,7 +194,7 @@ export default function LeadForm() {
               </div>
 
               <div className="space-y-1">
-                <Label htmlFor="carMake"><Car className="inline-block mr-1 h-4 w-4" /> Make</Label>
+                <Label htmlFor="carMake"><Car className="inline-block mr-1 h-4 w-4" /> Make <span className="text-red-500">*</span></Label>
                 <Controller
                   name="carMake"
                   control={control}
@@ -244,12 +203,15 @@ export default function LeadForm() {
                       disabled={!selectedYear || loadingMakes}
                       onValueChange={(val) => {
                         field.onChange(val);
-                        resetField("carModel"); // Reset dependent field
+                        resetField("carModel");
                       }}
                       value={field.value}
                     >
-                      <SelectTrigger id="carMake" className="w-full">
-                        <SelectValue placeholder={!selectedYear ? "Select Year First" : loadingMakes ? "Loading..." : "Select Make"} />
+                      <SelectTrigger id="carMake" className="w-full h-10 md:h-12 flex items-center justify-between" aria-invalid={!!selectedYear && !!errors.carMake}>
+                        <span className="flex items-center gap-2 truncate">
+                          {loadingMakes && <Loader2 className="h-4 w-4 animate-spin text-blue-500 flex-shrink-0" />}
+                          <SelectValue placeholder={!selectedYear ? "Select Year First" : loadingMakes ? "Loading..." : "Select Make"} />
+                        </span>
                       </SelectTrigger>
                       <SelectContent>
                         {makes.map((make) => (
@@ -265,7 +227,7 @@ export default function LeadForm() {
               </div>
 
               <div className="space-y-1">
-                <Label htmlFor="carModel"><Settings className="inline-block mr-1 h-4 w-4" /> Model</Label>
+                <Label htmlFor="carModel"><Settings className="inline-block mr-1 h-4 w-4" /> Model <span className="text-red-500">*</span></Label>
                 <Controller
                   name="carModel"
                   control={control}
@@ -275,8 +237,11 @@ export default function LeadForm() {
                       onValueChange={field.onChange}
                       value={field.value}
                     >
-                      <SelectTrigger id="carModel" className="w-full">
-                        <SelectValue placeholder={!selectedMake ? "Select Make First" : loadingModels ? "Loading..." : "Select Model"} />
+                      <SelectTrigger id="carModel" className="w-full h-10 md:h-12 flex items-center justify-between" aria-invalid={!!selectedMake && !!errors.carModel}>
+                        <span className="flex items-center gap-2 truncate">
+                          {loadingModels && <Loader2 className="h-4 w-4 animate-spin text-blue-500 flex-shrink-0" />}
+                          <SelectValue placeholder={!selectedMake ? "Select Make First" : loadingModels ? "Loading..." : "Select Model"} />
+                        </span>
                       </SelectTrigger>
                       <SelectContent>
                         {models.map((model) => (

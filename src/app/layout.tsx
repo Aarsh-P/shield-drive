@@ -8,8 +8,25 @@ const nunito = Nunito({
 });
 
 export const metadata: Metadata = {
-  title: "ShieldDrive - Auto Insurance",
-  description: "Get your free auto insurance quote today.",
+  title: "ShieldDrive | Compare Auto Insurance Rates & Save",
+  description: "Stop overpaying for auto insurance. Compare personalized rates from top-rated carriers in minutes. Drivers save an average of $536/year.",
+  metadataBase: new URL("https://shielddrive.insurance"),
+  alternates: {
+    canonical: "/",
+  },
+  openGraph: {
+    title: "ShieldDrive | Compare Auto Insurance Rates & Save",
+    description: "Stop overpaying for auto insurance. Compare personalized rates from top-rated carriers in minutes. Drivers save an average of $536/year.",
+    url: "https://shielddrive.insurance",
+    siteName: "ShieldDrive",
+    locale: "en_US",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "ShieldDrive | Compare Auto Insurance Rates & Save",
+    description: "Stop overpaying for auto insurance. Compare personalized rates from top-rated carriers in minutes. Drivers save an average of $536/year.",
+  },
 };
 
 import { Toaster } from "@/components/ui/sonner";

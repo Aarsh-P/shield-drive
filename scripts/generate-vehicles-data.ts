@@ -1,5 +1,6 @@
 import * as fs from 'fs';
 import * as path from 'path';
+import { VehicleSeed } from './types';
 
 const makeModels: Record<string, string[]> = {
   Toyota: ['Camry', 'Corolla', 'RAV4', 'Prius', 'Tacoma', 'Highlander', 'Sienna', 'Tundra'],
@@ -18,12 +19,6 @@ const makeModels: Record<string, string[]> = {
   BMW: ['3 Series', '5 Series', 'X3', 'X5', '7 Series'],
   'Mercedes-Benz': ['C-Class', 'E-Class', 'GLC', 'GLE', 'S-Class']
 };
-
-interface VehicleSeed {
-  year: number;
-  make: string;
-  model: string;
-}
 
 const vehicles: VehicleSeed[] = [];
 
